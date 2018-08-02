@@ -41,11 +41,10 @@ docker run -d \
         keli/xiazaibao-xware
 ```
 
-####
-注意要点：
+#### 注意要点：
 
---privileged 提高权限
---mac-address 指定一个下载宝的mac地址
+* --privileged 提高权限不可少
+* --mac-address 指定一个下载宝的mac地址
 
 
 ### 查看激活码/到下载宝远程迅雷页面增加设备
