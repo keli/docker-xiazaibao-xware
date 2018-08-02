@@ -6,7 +6,6 @@ RUN apt-get update -y && \
 	apt-get install -y net-tools procps proot qemu-user-static && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-	echo '127.0.0.1	report.em.sandai.net' >> /etc/hosts && \
 	mkdir -p /data
 
 COPY xzb /xzb
