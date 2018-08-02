@@ -12,4 +12,4 @@ RUN apt-get update -y && \
 COPY xzb /xzb
 VOLUME /data
 
-CMD proot -R /xzb -b /proc -b /data -w / -q "qemu-mipsel-static -cpu 24KEc" /bin/sh /bin/etm_monitor
+CMD proot -R /xzb -b /data -w / -q "qemu-mipsel-static -cpu 24KEc" /bin/sh /bin/etm_monitor
