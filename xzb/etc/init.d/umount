@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+
+STOP=99
+stop() {
+	/etc/init.d/appmsh     	stop
+	/etc/init.d/xctlsh	stop
+	/etc/init.d/lighttpdsh 	stop
+	/etc/init.d/mpssh      	stop
+	/etc/init.d/etmsh      	stop
+	/etc/init.d/dlnash	stop
+	/etc/waittime.sh close 	&
+
+	/etc/init.d/samba  	stop
+	
+	sync
+	#/bin/umount -a -d -r
+	/sbin/block umount /dev/sd*
+	umount -lf /dev/sd*	
+
+	sleep 1
+}

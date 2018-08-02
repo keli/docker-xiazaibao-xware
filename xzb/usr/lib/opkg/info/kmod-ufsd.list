@@ -1,0 +1,9 @@
+/etc/modules.d/31-ufsd
+/usr/sbin/mkhfs
+/lib/modules/3.10.14/ufsd.ko
+/usr/sbin/chkntfs
+/etc/modules-boot.d/31-ufsd
+/usr/sbin/mkntfs
+/usr/sbin/chkhfs
+/lib/modules/3.10.14/jnl.ko
+/usr/sbin/ufsd

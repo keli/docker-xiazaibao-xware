@@ -1,0 +1,83 @@
+logger $ACTION $DEVNAME $DEVTYPE
+
+. /lib/ramips.sh
+xzb_mach=$(ramips_hardware_model)
+
+[ "$ACTION" = "add" ] && {
+	[ "$DEVTYPE" = "partition" -o "$DEVTYPE" = "disk" ] && {
+		[ "${DEVNAME:0:2}" = "sd" ] && {
+			[ "$(mount | grep $DEVNAME | cut -d ' ' -f1 | tr -d '\n')" = "/dev/$DEVNAME" ] && {
+				[ "$xzb_mach" = "xiazaibao" ] && {
+					DEVIDX=${DEVNAME#*sda}
+					section=`/sbin/uci add samba sambashare`
+					/sbin/uci rename samba.$section=Volume$DEVIDX
+					/sbin/uci set samba.Volume$DEVIDX.name=Volume$DEVIDX
+					/sbin/uci set samba.Volume$DEVIDX.path=/data/UsbDisk1/Volume$DEVIDX
+					/sbin/uci set samba.Volume$DEVIDX.read_only=no
+					/sbin/uci set samba.Volume$DEVIDX.guest_ok=yes
+					/sbin/uci set samba.Volume$DEVIDX.create_mask=777
+					/sbin/uci set samba.Volume$DEVIDX.dir_mask=777
+					/sbin/uci commit
+					chmod 777 /data/UsbDisk1/Volume$DEVIDX
+
+					touch /tmp/smb.flag
+					smp.sh storage
+
+					/etc/init.d/samba restart
+				}
+				[ "$xzb_mach" = "xiazaibao_pro" ] && {
+					PATH=`mount | grep $DEVNAME | cut -d ' ' -f3 | tr -d '\n'`
+					section=`/sbin/uci add samba sambashare`
+					/sbin/uci rename samba.$section=Volume$DEVNAME
+					/sbin/uci set samba.Volume$DEVNAME.name=Volume-$DEVNAME
+					/sbin/uci set samba.Volume$DEVNAME.path=$PATH
+					/sbin/uci set samba.Volume$DEVNAME.read_only=no
+					/sbin/uci set samba.Volume$DEVNAME.guest_ok=yes
+					/sbin/uci set samba.Volume$DEVNAME.create_mask=777
+					/sbin/uci set samba.Volume$DEVNAME.dir_mask=777
+					/sbin/uci commit
+					chmod 777 $PATH
+
+					touch /tmp/smb.flag
+					smp.sh storage
+
+					/etc/init.d/samba restart
+				}
+			}
+		}
+	}
+}
+
+[ "$ACTION" = "remove" ] && {
+	[ "$DEVTYPE" = "partition" -o "$DEVTYPE" = "disk" ] && {
+		[ "${DEVNAME:0:2}" = "sd" ] && {
+			[ "$xzb_mach" = "xiazaibao" ] && {
+				DEVIDX=${DEVNAME#*sda}
+				[ `/sbin/uci get samba.Volume$DEVIDX.name` = "" ] && break
+				[ `/sbin/uci get samba.Volume$DEVIDX.name` = "Volume$DEVIDX" ] && {
+					/sbin/uci delete samba.Volume$DEVIDX
+					/sbin/uci commit
+				}
+				
+				ret=$(/sbin/uci get samba.@sambashare[0] 2>&1 | awk '{print $3}' | tr -d '\n')
+				[ $ret = "not" ] && {
+					/etc/init.d/samba stop
+					rm -f /tmp/smb.flag
+				}
+				[ $ret = "not" ] || {
+					/etc/init.d/samba restart	
+				}
+			}
+			
+			[ "$xzb_mach" = "xiazaibao_pro" ] && {
+				[ `/sbin/uci get samba.Volume$DEVNAME` = "" ] && break
+				[ `/sbin/uci get samba.Volume$DEVNAME.name` = "Volume-$DEVNAME" ] && {
+					/sbin/uci delete samba.Volume$DEVNAME
+					/sbin/uci commit
+				}
+			}
+		}
+	}
+}
+
+

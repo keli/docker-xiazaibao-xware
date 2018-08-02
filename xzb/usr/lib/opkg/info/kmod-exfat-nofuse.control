@@ -1,0 +1,10 @@
+Package: kmod-exfat-nofuse
+Version: 3.10.14+2014-11-25-PKG_SOURCE_VERSION
+Depends: kernel (=3.10.14-1-b3e131aca42b5f381c3bc5d0c199ec91), kmod-nls-base
+Source: package/ramips/drivers/exfat-nofuse
+License: GPLv2
+Section: kernel
+Maintainer: Hua Shao <hua.shao@mediatek.com>
+Architecture: ramips_24kec
+Installed-Size: 54744
+Description:  MS exFAT support

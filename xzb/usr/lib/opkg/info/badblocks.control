@@ -1,0 +1,8 @@
+Package: badblocks
+Version: 1.42.4-1
+Depends: libc, e2fsprogs
+Source: package/utils/e2fsprogs
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 9489
+Description:  Ext2 Filesystem badblocks utility

@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/xldp
+
+start()
+{
+	stop
+	${PROG} -i br-lan &
+}
+
+stop()
+{
+	killall -s KILL xldp
+}
+
+

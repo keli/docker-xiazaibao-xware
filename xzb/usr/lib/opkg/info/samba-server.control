@@ -1,0 +1,13 @@
+Package: samba-server
+Version: 4.0.24-1
+Depends: libc, libaio, libpthread, libz
+Source: package/ramips/applications/samba
+License: GPLv3
+LicenseFiles: COPYING
+Section: opt
+Architecture: ramips_24kec
+Installed-Size: 1968563
+Description:  The Samba software suite is a collection of programs that implements the
+ SMB protocol for UNIX systems, allowing you to serve files and printers to
+ Windows, NT, OS/2 and DOS clients. This protocol is sometimes also referred
+ to as the LanManager or Netbios protocol.

@@ -1,0 +1,8 @@
+/lib/modules/3.10.14/nf_defrag_ipv6.ko
+/etc/modules.d/42-ip6tables
+/lib/modules/3.10.14/ip6t_REJECT.ko
+/lib/modules/3.10.14/nf_conntrack_ipv6.ko
+/lib/modules/3.10.14/ip6table_mangle.ko
+/lib/modules/3.10.14/ip6table_filter.ko
+/lib/modules/3.10.14/ip6table_raw.ko
+/lib/modules/3.10.14/ip6_tables.ko

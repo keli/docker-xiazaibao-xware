@@ -1,0 +1,8 @@
+Package: kmod-ufsd
+Version: 3.10.14+k3.10.14-1
+Depends: kernel (=3.10.14-1-b3e131aca42b5f381c3bc5d0c199ec91), kmod-nls-base, libc
+Source: package/kernel/ufsd
+Section: kernel
+Architecture: ramips_24kec
+Installed-Size: 864211
+Description:  Paragon ufsd driver for ntfs/hfs+ filesystem

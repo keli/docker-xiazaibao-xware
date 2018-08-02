@@ -1,0 +1,23 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/rcmd
+PID_FILE=/var/run/rcmd.pid
+
+start()
+{
+	mkdir -p /tmp/nginx/socket
+	rm -f /tmp/nginx/socket/rcmd.sock
+	${PROG} &
+}
+
+stop()
+{
+	killall -s TERM rcmd
+	killall -s KILL rcmd
+	rm -f ${PID_FILE}
+}
+
+

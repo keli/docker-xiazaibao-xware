@@ -1,0 +1,9 @@
+Package: mkdosfs
+Version: 3.0.28-1
+Depends: libc, libstdcpp, libiconv-full
+Source: package/utils/dosfstools
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 12126
+Description:  Utilities to create and check MS-DOS FAT filesystems.
+ (mkfs.vfat and mkfs.msdos for creating FAT volumes)

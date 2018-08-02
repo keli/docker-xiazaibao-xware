@@ -1,0 +1,6 @@
+dirset=1
+scan_dir=shared_x9
+scan_dir=SDBackup
+scan_dir=TDDOWNLOAD
+scan_dir=.private
+scan_dir=xiazaibao

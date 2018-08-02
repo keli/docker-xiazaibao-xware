@@ -1,0 +1,37 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+
+START=99
+
+boot() {
+	. /lib/ramips.sh
+	xzb_mach=$(ramips_hardware_model)
+
+	[ -d /tmp/root ] && mount_root done
+	block mount
+	
+	# launch daemon for button reset & hdd remove
+	[ "$xzb_mach" = "xiazaibao" ] && btnd hdd_remove 4 &
+	
+	[ "$xzb_mach" = "xiazaibao_pro" ] && btnd hdd_remove 12 &
+
+	btnd reset 13 &
+
+	# process user commands
+	[ -f /etc/rc.local ] && {
+		sh /etc/rc.local
+	}
+	
+	# cooling fan speed auto adjust
+	[ "$xzb_mach" = "xiazaibao_pro" ] && /usr/sbin/hddmon.sh &
+	
+	# set leds to normal state
+	. /etc/diag.sh
+	set_state done
+
+	# create flag file for hotplug script
+	touch /tmp/sys_init_done
+
+	# wow! let the dog out
+	[ "$xzb_mach" = "xiazaibao_pro" ] && watchdog &
+}

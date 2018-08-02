@@ -1,0 +1,38 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/dlna
+PID_FILE=/var/run/dlna.pid
+DLNASW_FILE=/tmp/dlnaswitch 
+
+start()
+{
+	local DLNA_SW="0"
+	if [ ! -f ${DLNASW_FILE} ]; then
+		# file not exist, read switch from flash, and save it to tmp
+		/bin/resetboot -c
+	fi
+
+	if [ ! -f ${DLNASW_FILE} ]; then
+		# set to 1 enable dlna, 1 to disable
+		#DLNA_SW="0"
+		DLNA_SW="1"
+	else
+		DLNA_SW=`cat ${DLNASW_FILE}`
+	fi
+
+	if [ "${DLNA_SW}" == "1" ]; then
+		/bin/dlnaconfig
+		${PROG} &
+	fi
+}
+
+stop()
+{
+	killall -s TERM dlna
+	killall -s KILL dlna
+	rm -f ${PID_FILE}
+}
+

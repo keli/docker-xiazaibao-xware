@@ -1,0 +1,8 @@
+Package: nvram
+Version: 1
+Depends: libc, libnvram
+Source: package/ramips/applications/nvram
+Section: opt
+Architecture: ramips_24kec
+Installed-Size: 2029
+Description:  MTK nvram tool

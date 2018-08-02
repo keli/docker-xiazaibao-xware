@@ -1,0 +1,38 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+ulimit -v 150000
+[ -f /etc/firsted_ro ] || {
+	touch /etc/firsted_ro
+	block mount
+}
+
+# start the service if not exist
+#[ -z "$(ps  2>&1 | grep -w 'xctl' | grep -v 'grep')" ] && /etc/init.d/xctlsh start &
+#[ -z "$(ps  2>&1 | grep -w 'racd' | grep -v 'grep')" ] && /etc/init.d/racdsh start &
+/bin/resetboot -b &
+/bin/au &
+/bin/hsd &
+/usr/sbin/dropbear -I 600
+
+[ -f /tmp/waittime_start ] || {
+	touch /tmp/waittime_start
+	/etc/waittime.sh start &
+}
+
+
+
+enable=$(uci get system.ntp.enable_server)
+[ $enable -eq 1 ] && {
+	uci set  system.ntp.enable_server=0
+	uci commit
+	/etc/init.d/sysntpd restart
+	/etc/init.d/network restart
+}
+
+#for tcp_max_syn_backlog
+/etc/init.d/sysctl restart
+
+/etc/init.d/myinit
+
+exit 0

@@ -1,0 +1,8 @@
+Package: btnd
+Version: 1
+Depends: libc
+Source: package/ramips/applications/btnd
+Section: MTK Properties
+Architecture: ramips_24kec
+Installed-Size: 3709
+Description:  Daemon to monitor gpio buttons

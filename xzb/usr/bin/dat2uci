@@ -1,0 +1,218 @@
+#!/usr/bin/env lua
+
+--[[
+ * A tool to translate ralink driver config (*.dat) into OpenWrt
+ * UCI files (/etc/config/wireless).
+ *                                --- Hua Shao <nossiac@163.com>
+ *
+ * For UCI: http://wiki.openwrt.org/doc/techref/uci
+ *          http://wiki.openwrt.org/doc/uci
+ *
+ * Copyright (C) 2015 Mediatek CO.,LTD. All rights reserved.
+ *
+]]
+
+require "shuci"
+
+T={}
+
+if #arg < 1 then
+    io.stderr:write("usage: dat2uci <datfile> [ucifile] \n")
+    return false
+end
+
+local i,j = string.find(arg[1], ".dat")
+if i then
+    datfile = arg[1]
+    ucifile = arg[2] or "/etc/config/wireless"
+else
+    ucifile = arg[1]
+    datfile = arg[2]
+end
+print("ucifile="..ucifile)
+print("datfile="..datfile)
+
+_,_,device = string.find(datfile, "(%w+).dat")
+print("device="..device)
+
+local _2g_name = {"7601","7602","7603","7620","7623","7628","7688"}
+for i=1, #_2g_name do
+    if string.find(device, _2g_name[i]) then band = "2.4G" break else band = "5G" end
+end
+
+print("band="..band)
+
+
+for line in io.lines(datfile) do
+    -- print(line)
+    i,j = string.find(line, "([^%s])")
+    if i and j then
+        ch = string.sub(line,i,j)
+
+        if ch == "#" then
+            -- print("<comment> "..line)
+        else
+            _,_,k,v = string.find(line, "%s*([%w_]+)%s*=%s*([^#]*)%s*")
+            if k then
+                -- print("<k-v> ",k,v)
+                local t = {}
+                T[k] = v
+            end
+        end
+    end
+end
+
+uci = UCI:new()
+uci:load(ucifile)
+
+
+--[[ Device related configurations ]]
+
+
+uci:set("wifi-device", device)
+uci:set(device, "type", device)
+uci:set(device, "vendor", "ralink")
+uci:set(device, "band", band)
+
+if T.AutoChannelSelect ~= 0 then
+    uci:set(device, "channel", "0")
+    uci:set(device, "autoch", T.AutoChannelSelect or "nil")
+else
+    uci:set(device, "channel", T.Channel or "nil")
+    uci:set(device, "autoch", "0")
+end
+uci:set(device, "radio", T.RadioOn or "nil")
+uci:set(device, "wifimode", T.WirelessMode or "nil")
+-- bandwidth
+if T.BW == 1 and T.VHT_BW == 1 then
+    uci:set(device, "bw", "2")
+elseif T.BW == 0 and T.VHT_BW == 0 then
+    uci:set(device, "bw", "0")
+else
+    uci:set(device, "bw", "1")
+end
+uci:set(device, "country", T.CountryCode or "TW")
+uci:set(device, "region", T.CountryRegion or "1")
+uci:set(device, "bgprotect", T.BGProtection or "0")
+uci:set(device, "beacon", T.BeaconPeriod or "100")
+uci:set(device, "dtim", T.DtimPeriod or "1")
+uci:set(device, "fragthres", T.FragThreshold or "2346")
+uci:set(device, "rtsthres", T.RTSThreshold or "2347")
+uci:set(device, "txpower", T.TxPower or "100")
+uci:set(device, "txpreamble", T.TxPreamble or "0")
+uci:set(device, "shortslot", T.ShortSlot or "1")
+uci:set(device, "txburst", T.TxBurst or "1")
+uci:set(device, "pktaggre", T.PktAggregate or "0")
+uci:set(device, "ieee80211h", T.IEEE80211H or "0")
+uci:set(device, "ht_bsscoexist", T.HT_BSSCoexistence or "0")
+uci:set(device, "ht_extcha", T.HT_EXTCHA or "0")
+uci:set(device, "ht_opmode", T.HT_OpMode or "0")
+uci:set(device, "ht_gi", T.HT_GI or "1")
+uci:set(device, "ht_rdg", T.HT_RDG or "0")
+uci:set(device, "ht_stbc", T.HT_STBC or "0")
+uci:set(device, "ht_amsdu", T.HT_AMSDU or "0")
+uci:set(device, "ht_autoba", T.HT_AutoBA or "1")
+uci:set(device, "ht_badec", T.HT_BADecline or "0")
+uci:set(device, "ht_distkip", T.HT_DisallowTKIP or "0")
+uci:set(device, "ht_ldpc", T.HT_LDPC or "1")
+uci:set(device, "ht_txstream", T.HT_TxStream or "1")
+uci:set(device, "ht_txstream", T.HT_RxStream or "1")
+if band == "5G" then
+    uci:set(device, "aregion", T.CountryRegionABand or "7")           -- 5G
+    uci:set(device, "vht_stbc", T.VHT_STBC or "0")                    -- 5G
+    uci:set(device, "vht_sgi", T.VHT_SGI or "1")                      -- 5G
+    uci:set(device, "vht_bw_sig", T.VHT_BW_SIGNAL or "0")             -- 5G
+    uci:set(device, "vht_ldpc", T.VHT_LDPC or "1")                    -- 5G
+    uci:set(device, "vht_disnonvht", T.VHT_DisallowNonVHT or "0")     -- 5G
+end
+
+--uci:dump()
+--[[ Interface related configurations. ]]
+
+function split(inputstr, delimiter)
+    if delimiter == nil then
+            delimiter = "%s"
+    end
+    local t={} ; i=1
+    for str in string.gmatch(inputstr, "([^"..delimiter.."]+)") do
+            t[i] = str
+            i = i + 1
+    end
+    return t
+end
+
+
+local i = 0 -- index of wifi-iface
+local j = 0 -- index of wifi-iface with give devname
+
+while j < tonumber(T.BssidNum) do
+    if not uci:get("wifi-iface["..i.."]", "device") then
+        if band == "2.4G" then
+            uci:set("wifi-iface["..i.."]", "ra"..j)
+            uci:set("wifi-iface["..i.."]", "ifname", "ra"..j)
+        else
+            uci:set("wifi-iface["..i.."]", "rai"..j)
+            uci:set("wifi-iface["..i.."]", "ifname", "rai"..j)
+        end
+        uci:set("wifi-iface["..i.."]", "device", device)
+    end
+    if device == uci:get("wifi-iface["..i.."]", "device") then
+        uci:set("wifi-iface["..i.."]", "ssid", loadstring("return T.SSID"..(j+1))())
+        uci:set("wifi-iface["..i.."]", "hidden", T.HideSSID or "0")
+        -- openwrt specific
+        uci:set("wifi-iface["..i.."]", "mode", "ap")
+        uci:set("wifi-iface["..i.."]", "network", "lan")
+
+        -- encryption
+        authmode = split(T.AuthMode, ";")
+        if authmode[j+1] == "OPEN" then
+            uci:set("wifi-iface["..i.."]", "encryption", "none")
+        elseif authmode[j+1] == "WPAPSK" then
+            uci:set("wifi-iface["..i.."]", "encryption", "psk")
+            uci:set("wifi-iface["..i.."]", "key", loadstring("return T.WPAPSK"..(j+1))())
+        elseif authmode[j+1] == "WPA2PSK" then
+            uci:set("wifi-iface["..i.."]", "encryption", "psk2")
+            uci:set("wifi-iface["..i.."]", "key", loadstring("return T.WPAPSK"..(j+1))())
+        elseif authmode[j+1] == "WPA" then
+            uci:set("wifi-iface["..i.."]", "encryption", "wpa")
+        elseif authmode[j+1] == "WPA2" then
+            uci:set("wifi-iface["..i.."]", "encryption", "wpa2")
+        elseif authmode[j+1] == "WPA1WPA2" then
+            uci:set("wifi-iface["..i.."]", "encryption", "wpa+wpa2")
+        else
+            uci:set("wifi-iface["..i.."]", "encryption", "open")
+        end
+
+        -- cipher
+        --[[
+        cipher = split(T.EncrypType, ";")
+        if authmode[j+1] == "OPEN" then
+            uci:set("wifi-iface["..i.."]", "cipher", "none")
+        elseif cipher[j+1] == "AES" then
+            uci:set("wifi-iface["..i.."]", "cipher", "ccmp")
+        elseif cipher[j+1] == "TKIP" then
+            uci:set("wifi-iface["..i.."]", "cipher", "tkip")
+        elseif cipher[j+1] == "TKIPAES" then
+            uci:set("wifi-iface["..i.."]", "cipher", "tkip+ccmp")
+        else
+            uci:set("wifi-iface["..i.."]", "cipher", "none")
+        end ]]
+
+        --uci:set("wifi-iface["..i.."]", "wepkey", "xx")
+        if T.IEEE8021X == 1 then
+            uci:set("wifi-iface["..i.."]", "auth_server", T.RADIUS_Server or "nil")
+            uci:set("wifi-iface["..i.."]", "auth_port", T.RADIUS_Port or "nil")
+            uci:set("wifi-iface["..i.."]", "auth_secret", "xx")
+        end
+        --uci:set("wifi-iface["..i.."]", "pmkcacheperiod", T.PMKCachePeriod or "nil")
+        --uci:set("wifi-iface["..i.."]", "preauth", T.PreAuth or "nil")
+        --uci:set("wifi-iface["..i.."]", "rekeyinteval", T.RekeyInterval or "nil")
+        j = j + 1
+    end
+    i = i + 1
+end
+
+--uci:dump()
+uci:save(ucifile)
+
+return true

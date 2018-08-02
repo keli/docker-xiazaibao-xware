@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/racd
+PID_FILE=/var/run/racd.pid
+
+start()
+{
+	${PROG} -b -V -1 &
+}
+
+stop()
+{
+	killall -s KILL racd
+	rm -f ${PID_FILE}
+}
+
+

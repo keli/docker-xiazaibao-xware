@@ -1,0 +1,8 @@
+Package: switch
+Version: 1
+Depends: libc
+Source: package/ramips/applications/switch
+Section: MTK Properties
+Architecture: ramips_24kec
+Installed-Size: 9083
+Description:  An program to config switch.

@@ -1,0 +1,231 @@
+#!/bin/sh
+
+. /lib/ramips.sh
+
+xzb_mach=$(ramips_hardware_model)
+device=`basename $DEVPATH`
+
+DISK_NAME=${device:0:3}
+logger "diskname $DISK_NAME ******************"
+[ $DISK_NAME != "" ] && {
+	rm -rf /tmp/file.txt
+	cd /dev
+	ls $DISK_NAME* | sort -n > /tmp/file.txt
+	max_usb_name=$(tail -1 /tmp/file.txt)
+	cd -
+}
+
+restart_service()
+{
+	# remove mounting flag file and stop blinking white LED
+	[ -f /tmp/initdisk ] && rm -rf /tmp/initdisk
+	mount_ok=`mount | grep  UsbDisk`
+	if [ "$mount_ok" != "" ]; then
+		if [ "$xzb_mach" == "xiazaibao" ]; then
+			# turn on white LED
+			gpio orange_off_white_on
+		elif [ "$xzb_mach" == "xiazaibao_pro" ]; then
+			update_LED_static_status
+		fi
+	fi
+
+	local vols=`grep "UsbDisk1\/Volume" /proc/mounts`
+	if [ "${vols}" == "" ]; then
+		xlogger "script: none partition was mounted, restart service"
+	else
+		echo "${vols}" > /tmp/.disk_vols.txt
+		while read line
+		do
+			xlogger "script: mounted a partition '${line}'"
+		done < /tmp/.disk_vols.txt
+		rm -f /tmp/.disk_vols.txt
+	fi
+
+	/etc/init.d/appmsh 	stop
+	[ "$xzb_mach" = "xiazaibao_pro" ] && killall hsd	
+
+	sleep 2
+	/etc/waittime.sh open &
+
+	if [ -e /dev/sr0 ]; then
+		logger "add security disk"
+		xlogger "script: add a security disk"
+		touch /tmp/security_disk
+	fi
+
+	/etc/init.d/xctlsh 	restart
+	/etc/init.d/mpssh 	restart
+	/etc/init.d/etmsh 	restart
+	/etc/init.d/dlnash 	restart
+	/etc/init.d/samba 	restart
+	/etc/init.d/appmsh 	start
+	
+	[ "$xzb_mach" = "xiazaibao_pro" ] && /bin/hsd &
+	
+	/bin/diag.sh &
+}
+
+case "$device" in
+sda | sdb | sdc | sdd | md | hd)
+	case "$ACTION" in
+	add)
+		# create mounting flag file and blink white LED
+		[ -f /tmp/initdisk ] || touch /tmp/initdisk 
+		if [ "$xzb_mach" == "xiazaibao" ]; then                                                                                                                 
+                        gpio orange_off_white_blink                  
+                elif [ "$xzb_mach" == "xiazaibao_pro" ]; then
+                        gpio white_blink                     
+                fi 
+
+		#Tai dian; U Disk
+		logger "device=$device; max_usb_name=$max_usb_name"
+		xlogger "script: add usb device ${device}, max_usb_name=$max_usb_name"
+		[ "$device" = "$max_usb_name" ] && {
+
+			# prevent hotplug script launching processes before system script:/etc/rc.d
+			while [ ! -e /tmp/sys_init_done ]; do
+				sleep 1
+			done
+			restart_service
+		}
+
+		#设置高级电源管理特性(APM)，如果驱动器支持。一个较小的值意味着更省电？一个较大的值意味着更好的性能，将它设置为255将在指定驱动器上关闭APM。
+		hdparm  -B  255  /dev/$device | logger  -t  hdparm 
+
+		#设置驱动器等待超时，这个参数决定硬盘在多久未响应之后关闭主轴电机以省电，这个数值设置为0则关闭这个功能
+		hdparm  -S  0  /dev/$device     |  logger  -t  hdparm 
+		;;
+	remove)	
+		logger "remove device=$device; max_usb_name=$max_usb_name"
+		xlogger logger "script: remove device=$device, max_usb_name=$max_usb_name"
+
+		[ -f /tmp/initdisk ] && rm -rf /tmp/initdisk
+		[ -f /tmp/remove_usb ] ||  touch /tmp/remove_usb
+		[ -f /tmp/.config.ini ] && rm -rf /tmp/.config.ini
+
+		# change LED status if HDD is removed
+		if [ "$xzb_mach" == "xiazaibao" ]; then
+			# turn on orange.                                    
+			gpio orange_on_white_off
+		elif [ "$xzb_mach" == "xiazaibao_pro" ]; then
+			update_LED_static_status
+		fi
+
+		/etc/init.d/appmsh		stop
+		/etc/init.d/xctlsh		stop
+		/etc/init.d/mpssh		stop
+		[  "$xzb_mach" == "xiazaibao"  ] && /etc/init.d/samba       stop
+		/etc/init.d/dlnash      stop
+
+		# stop service pro
+		[ -f /tmp/waittime_open ] && rm -rf /tmp/waittime_open
+
+		/etc/waittime.sh close & 
+		[ -f /tmp/waittime_close ] && rm -rf /tmp/waittime_close
+
+		# umount first and then delete fs path,already umount by invoke '10-mount'?
+		#/bin/umountall /dev/${$device}
+		
+		# delete dir
+		[  "$xzb_mach" = "xiazaibao"  ] && rm -rf /data/UsbDisk1
+		
+		if [ "$xzb_mach" = "xiazaibao_pro" ]; then
+			mnt_path_list=`ls /data`
+			for mnt_path in $mnt_path_list ;
+			do
+				vol_path=`mount | grep $mnt_path`
+				if [ -z "$vol_path" ]; then
+					rm -rf /data/$mnt_path
+				fi
+			done
+		fi		
+
+		if [ -f /tmp/security_disk ]; then
+			rm -f /tmp/security_disk
+		fi
+		/etc/init.d/xctlsh     start
+		/etc/init.d/dlnash     start
+		/etc/init.d/mpssh      start
+		/etc/init.d/appmsh     start
+		;;
+	esac
+	;;
+
+sda* | sdb* | sdc* | sdd* | md* | hd*)
+	case "$ACTION" in
+	add)
+		xlogger "script: add usb partition ${device}, max_usb_name ${max_usb_name}"
+
+		[ -f /tmp/quick_umount ] && rm /tmp/quick_umount
+		[ -f /tmp/remove_usb ]   && rm /tmp/remove_usb
+
+		logger "device=$device; max_usb_name=$max_usb_name"
+
+		# start service pro
+		[ "$device" = "$max_usb_name" ] && {
+
+			# prevent hotplug script launching processes before system script:/etc/rc.d
+			while [ ! -e /tmp/sys_init_done ]; do
+				sleep 1
+			done
+			restart_service
+		}
+		;;
+	esac
+	;;
+
+mmcblk0 | mmcblk1 )
+	case "$ACTION" in
+	remove)
+		#delete dir
+		xlogger "script: remove sdcard device"
+		rm -rf /data/UsbDisk2
+
+		[ -f /tmp/waittime_sdopen ] && rm -rf /tmp/waittime_sdopen
+		/etc/waittime.sh sdclose &
+		[ -f /tmp/waittime_sdclose ] && rm -rf /tmp/waittime_sdclose
+
+		if [ "$xzb_mach" == "xiazaibao" ]; then
+			status=`mount | grep UsbDisk1`
+			if [ "$status" != "" ]; then
+				# turn on white LED
+				gpio orange_off_white_on
+			else
+				gpio orange_on_white_off
+			fi
+                elif [ "$xzb_mach" == "xiazaibao_pro" ]; then
+			update_LED_static_status
+		fi
+
+		/etc/cleansdbackup.sh
+		rm -f /tmp/sdinsert
+		;;
+	esac
+	;;
+
+mmcblk0p*)
+	case "$ACTION" in
+	add)
+		xlogger "script: add sdcard partition"
+		/etc/waittime.sh sdopen &
+
+		if [ "$xzb_mach" == "xiazaibao" ]; then
+			gpio orange_on_white_off
+			status=`mount | grep UsbDisk1`
+			if [ "$status" != "" ]; then
+				sleep 1
+				gpio orange_off_white_on
+			fi
+                elif [ "$xzb_mach" == "xiazaibao_pro" ]; then
+			gpio green_blink	
+			sleep 1
+			update_LED_static_status
+                fi
+
+		/etc/autosdbackup.sh                                                                                                                            
+                touch /tmp/sdinsert 
+		/bin/diag.sh &
+		;;
+	esac
+	;;
+esac

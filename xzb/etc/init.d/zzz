@@ -1,0 +1,10 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=99
+
+start()
+{
+xlogger "system: touch /tmp/sys_init_done"
+touch /tmp/sys_init_done
+}

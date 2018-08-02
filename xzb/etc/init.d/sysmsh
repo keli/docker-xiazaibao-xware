@@ -1,0 +1,17 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=52
+
+start()
+{
+	/bin/sysmonitor -i br-lan -n /bin/network_change.sh &
+}
+
+stop()
+{
+	killall -s TERM sysmonitor
+	killall -s KILL sysmonitor
+}
+
+

@@ -1,0 +1,8 @@
+Package: xfs-fsck
+Version: 3.1.7-1
+Depends: libc, libuuid, libpthread, librt
+Source: package/utils/xfsprogs
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 438669
+Description:  Utilities for checking and repairing XFS filesystems

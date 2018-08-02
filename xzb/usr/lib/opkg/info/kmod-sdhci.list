@@ -1,0 +1,4 @@
+/etc/modules.d/sdhci
+/lib/modules/3.10.14/sdhci-pltfm.ko
+/lib/modules/3.10.14/sdhci.ko
+/etc/modules-boot.d/sdhci

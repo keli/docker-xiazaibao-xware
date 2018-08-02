@@ -1,0 +1,9 @@
+Package: exfat
+Version: 1.0.1-1
+Depends: libc
+Source: package/utils/exfat
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 51056
+Description:  provide a set of exFAT file system utilities.
+ 

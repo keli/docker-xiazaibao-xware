@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=99
+
+stop()
+{
+	local pids=`ps w | grep "monitor.lua" | grep -v "grep" | awk '{ print $1 }'`
+	
+	for pid in ${pids}
+	do
+		kill -s TERM ${pid}
+		kill -s KILL ${pid}
+	done
+}
+
+start()
+{
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/lua
+	export PATH=${PATH}:/usr/bin
+	export PLUGIN_ROOT=
+
+	stop
+
+	/usr/bin/lua /usr/lua/monitor.lua -s /usr/lua -m /usr/lua/module > /dev/null &
+}
+
+

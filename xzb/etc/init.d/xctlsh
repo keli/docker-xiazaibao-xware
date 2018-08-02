@@ -1,0 +1,24 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/xctl
+PID_FILE=/var/run/xctl.pid
+
+start()
+{
+	mkdir -p /tmp/nginx/socket
+	rm -f /tmp/nginx/socket/xctl.sock
+	${PROG} &
+	logger "xctl start"
+}
+
+stop()
+{
+	killall -s KILL xctl
+#	killall -9 xctl
+	rm -f ${PID_FILE}
+	logger "xctl stop"
+}
+

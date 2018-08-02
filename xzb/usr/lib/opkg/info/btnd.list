@@ -1,0 +1,5 @@
+/usr/bin/btnd
+/etc/btnd/hdd_remove_hold.sh
+/etc/btnd/wps_click.sh
+/etc/btnd/reset_hold.sh
+/etc/btnd/hdd_remove_click.sh

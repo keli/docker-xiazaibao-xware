@@ -1,0 +1,9 @@
+Package: dosfsck
+Version: 3.0.28-1
+Depends: libc, libstdcpp, libiconv-full
+Source: package/utils/dosfstools
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 22286
+Description:  Utilities to create and check MS-DOS FAT filesystems.
+ (fsck.vfat and fsck.msdos for checking integrity of FAT volumes)

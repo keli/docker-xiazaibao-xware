@@ -1,0 +1,23 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=98
+
+PROG=/bin/mps
+PID_FILE=/var/run/mps.pid
+
+start()
+{
+	mkdir -p /tmp/nginx/socket
+	rm -f /tmp/nginx/socket/mps.sock
+	${PROG} -r /tmp/www &
+}
+
+stop()
+{
+	killall -s TERM mps
+	killall -s KILL mps
+	rm -f ${PID_FILE}
+}
+
+

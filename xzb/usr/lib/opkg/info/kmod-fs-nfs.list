@@ -1,0 +1,3 @@
+/lib/modules/3.10.14/nfs.ko
+/etc/modules.d/40-fs-nfs
+/lib/modules/3.10.14/nfsv3.ko

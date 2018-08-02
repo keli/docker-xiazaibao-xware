@@ -1,0 +1,23 @@
+#!/bin/sh
+. /lib/functions.sh
+
+if [ -f /data/UsbDisk2/Volume1/rom.tar ]
+then
+	cp /data/UsbDisk2/Volume1/rom.tar /tmp
+	umount /data/UsbDisk2/Volume1 -lf
+	mkfs.ext4 /dev/mmcblk0p1
+	mount /dev/mmcblk0p1 /data/UsbDisk2/Volume1
+	tar -C /data/UsbDisk2/Volume1 -xf /tmp/rom.tar
+	cp /etc/config/fstab-ext /etc/config/fstab -f
+	touch /data/UsbDisk2/Volume1/etc/root
+	reboot
+else
+	if [ -f /data/UsbDisk2/Volume1/etc/root ]
+	then
+		cp /etc/config/fstab-ext /etc/config/fstab -f
+		reboot
+	else
+		cp /etc/config/fstab-xzb /etc/config/fstab -f
+		block mount
+	fi
+fi

@@ -1,0 +1,23 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=51
+
+PROG=/bin/xlogd
+
+start()
+{
+	if [ ! -e /tmp/xlogs ]; then
+		mkdir -p /tmp/xlogs
+	fi
+	mkdir -p /tmp/nginx/socket
+	rm -f /tmp/nginx/socket/xlogd.sock
+	${PROG} -L /tmp/xlogs -f /etc/firmware -i br-lan &
+}
+
+stop()
+{
+	killall -s KILL xlogd
+}
+
+

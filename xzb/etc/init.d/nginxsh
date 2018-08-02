@@ -1,0 +1,44 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2015 time.xunlei.com
+
+START=95
+
+PROG=/bin/nginx
+
+start()
+{
+	# generate nginx.conf
+	/bin/nginx_config.sh
+	if [ $? != 0 ]; then
+		xlogger "nginx: generate nginx configuration failed, exit code $?"
+		exit 1
+	fi
+
+	killall -s KILL nginx
+
+	${PROG} -p /tmp/nginx -c /tmp/nginx/conf/nginx.conf  &
+}
+
+stop()
+{
+    ${PROG} -p /tmp/nginx -c /tmp/nginx/conf/nginx.conf -s stop
+    
+	killall -s TERM nginx
+	killall -s KILL nginx
+	rm -f ${PID_FILE}
+}
+
+reload()
+{
+	/bin/nginx_config.sh
+	if [ $? != 0 ]; then
+		xlogger "nginx: generate nginx configuration failed, exit code $?"
+		exit 1
+	fi
+
+	if [ "pidof nginx" != "" ]; then
+		${PROG} -p /tmp/nginx -c /tmp/nginx/conf/nginx.conf -s reload &
+	else
+		${PROG} -p /tmp/nginx -c /tmp/nginx/conf/nginx.conf &	
+	fi
+}

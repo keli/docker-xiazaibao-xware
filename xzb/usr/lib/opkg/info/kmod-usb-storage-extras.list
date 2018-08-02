@@ -1,0 +1,11 @@
+/lib/modules/3.10.14/ums-sddr55.ko
+/lib/modules/3.10.14/ums-karma.ko
+/lib/modules/3.10.14/ums-alauda.ko
+/lib/modules/3.10.14/ums-jumpshot.ko
+/lib/modules/3.10.14/ums-usbat.ko
+/lib/modules/3.10.14/ums-freecom.ko
+/lib/modules/3.10.14/ums-cypress.ko
+/lib/modules/3.10.14/ums-isd200.ko
+/etc/modules.d/usb-storage-extras
+/lib/modules/3.10.14/ums-sddr09.ko
+/lib/modules/3.10.14/ums-datafab.ko

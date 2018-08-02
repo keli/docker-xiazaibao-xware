@@ -1,0 +1,164 @@
+#!/bin/sh +x
+
+SELF_DIR=$(dirname $0)
+
+ETM_SYSTEM_PATH=/tmp/etm
+mkdir -p ${ETM_SYSTEM_PATH}
+ETM_TMP_PATH=/tmp/etm
+mkdir -p ${ETM_TMP_PATH}
+mkdir -p /var/run
+
+ETM_DISK_CFG_PATH=/etc/thunder_mounts.cfg
+ETM_CFG_PATH=/etc/etm.ini
+LOG_CFG_PATH=/etc/log.ini
+ETM_DEVICEID=
+ETM_HARDWAREID=
+ETM_LICENSE="1504300001000004f000775by6v6eu1y9jkj2m7h53"
+HUBBLE_LOG_PATH=/etc/hubble_log.ini
+PIPE_PATH=${ETM_TMP_PATH}/etm_hubble_report.pipe
+ETM_PID_FILE_PATH=/var/run/xunlei.pid
+ETM_NTFS_TYPE="3"
+
+assemble_etm_args()
+{
+	if [ -n "$ETM_SYSTEM_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --system_path=$ETM_SYSTEM_PATH"
+	fi
+	if [ -n "$ETM_DISK_CFG_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --disk_cfg=$ETM_DISK_CFG_PATH"
+	fi
+	if [ -n "$ETM_CFG_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --etm_cfg=$ETM_CFG_PATH"
+	fi
+	if [ -n "$LOG_CFG_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --log_cfg=$LOG_CFG_PATH"
+	fi
+#	if [ -n "$ETM_DEVICEID" ]; then
+#		ETM_ARGS="$ETM_ARGS --deviceid=$ETM_DEVICEID"
+#	fi
+#	if [ -n "$ETM_HARDWAREID" ]; then
+#		ETM_ARGS="$ETM_ARGS --hardwareid=$ETM_HARDWAREID"
+#	fi
+	if [ -n "$ETM_PID_FILE_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --pid_file=$ETM_PID_FILE_PATH"
+	fi
+	if [ -n "$ETM_LICENSE" ]; then
+		ETM_ARGS="$ETM_ARGS --license=$ETM_LICENSE"
+	fi
+	if [ -n "$PIPE_PATH" ]; then
+		ETM_ARGS="$ETM_ARGS --hubble_report_pipe_path=$PIPE_PATH"
+	fi
+
+	if [ -n "$ETM_NTFS_TYPE" ]; then
+		ETM_ARGS="$ETM_ARGS --ntfs_type=$ETM_NTFS_TYPE"
+	fi
+
+	ETM_ARGS="$ETM_ARGS --enable_freetime_upload=0"
+	ETM_ARGS="$ETM_ARGS --preferred_network_adapter=eth0"
+	ETM_ARGS="$ETM_ARGS --omit_hubble_report=0"
+	ETM_ARGS="$ETM_ARGS --import_v1v2_mode=0"
+	ETM_ARGS="$ETM_ARGS --listen_addr=0.0.0.0:9000"
+	ETM_ARGS="$ETM_ARGS --enable_vod=0"
+}
+
+assemble_hub_args()
+{
+	#HUB_ARGS="--wait_resp_timeout=20 --report_interval=5 " 
+	#HUB_ARGS="$HUB_ARGS --hubble_server_addr=t05b020vm3.sandai.net:9999 "
+	if [ -n "$ETM_SYSTEM_PATH" ]; then
+		HUB_ARGS="$HUB_ARGS --system_path=$ETM_SYSTEM_PATH"
+	fi
+	if [ -n "$PIPE_PATH" ]; then
+		HUB_ARGS="$HUB_ARGS --hubble_report_pipe_path=$PIPE_PATH"
+	fi
+	if [ -n "$HUBBLE_LOG_PATH" ]; then
+		HUB_ARGS="$HUB_ARGS --hubble_log_cfg=$HUBBLE_LOG_PATH"
+	fi
+	if [ -n "$ETM_CFG_PATH" ]; then
+		HUB_ARGS="$HUB_ARGS --etm_cfg=$ETM_CFG_PATH"
+	fi
+	
+	HUB_ARGS="$HUB_ARGS --preferred_network_adapter=eth0"
+}
+
+start_etm()
+{
+	#pkill hubble
+    mkdir -p ${ETM_SYSTEM_PATH}
+	#echo "executing ${SELF_DIR}/hubble $HUB_ARGS $@"
+	#( ${SELF_DIR}/hubble $HUB_ARGS $@ & )
+	echo "executing ${SELF_DIR}/etm $ETM_ARGS $@"
+	( umask 000 && ${SELF_DIR}/etm $ETM_ARGS $@ & )
+}
+
+stop_etm()
+{
+	pid=`cat $ETM_PID_FILE_PATH`
+	echo "stopping etm pid=$pid"
+	kill -9 $pid
+	#echo "stopping hubble"
+	#killall hubble
+}
+
+check_etm_status()
+{
+	RET_FILE="/tmp/etm_info"
+	time_begin=`date +%s`
+	wget -t1 -O$RET_FILE http://127.0.0.1:9000/getsysinfo &> /dev/null
+	if [ $? -ne 0 ]; then
+		time_end=`date +%s`
+		time_elapsed=$((time_end-time_begin))
+		if [ $time_elapsed -ge 60 ]; then 
+			#echo "[`date`] service timeout!!!!"
+			return 2 # service timeout
+   		fi
+		#echo "[`date`] sevice not avaliable!!!!"
+		return 1 #service not avaliable
+	fi
+	#echo "[`date`] service OK!!!"
+	return 0 #service OK
+}
+
+start_hubble()
+{
+	( ${SELF_DIR}/hubble $HUB_ARGS $@ & )
+}
+
+check_hubble_status()
+{
+	ps | grep hubble | grep -v grep > /dev/null 2>&1
+	return $?
+}
+
+etm_monitor()
+{
+	timeout_count=0
+	while true; do
+        if ! pidof hubble &> /dev/null; then
+            start_hubble
+        fi
+
+		check_etm_status
+		check_ret=$?
+		if [ $check_ret -eq 1 ]; then
+			start_etm $@
+			timeout_count=0
+		elif [ $check_ret -eq 2 ]; then
+			timeout_count=$((++timeout_count))
+			if [ $timeout_count -ge 5 ]; then
+				stop_etm
+				start_etm $@
+				timeout_count=0
+			fi
+		else
+			timeout_count=0
+		fi
+
+		sleep 3
+	done
+}
+
+assemble_etm_args
+assemble_hub_args
+
+etm_monitor $@

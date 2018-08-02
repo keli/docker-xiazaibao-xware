@@ -1,0 +1,215 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=80
+SMB_FILE=/tmp/smbswitch
+
+mk_smb_conf_link() {
+  #arg conf file-name e.g. smb.conf
+  local etc_conf=/etc/samba/$1
+  local var_conf=/var/etc/$1
+  
+  if [ ! -f "${etc_conf}" -o "`readlink ${etc_conf}`" != "${var_conf}" ]; then
+    echo "make symbolic link ${etc_conf} --> ${var_conf}"
+    rm -f ${etc_conf}
+    rm -f ${var_conf}
+    touch ${var_conf}
+    ln -s ${var_conf} ${etc_conf}
+    sync
+  fi
+}
+
+start_smb() {
+  local smbpwd_slink=/usr/sbin/smbpasswd
+  local smbpwd_dlink=/sbin/smbpasswd
+
+  LIST=`cat /proc/interrupts | sed -n '1p'`
+  NUM_OF_CPU=0; for i in $LIST; do NUM_OF_CPU=`expr $NUM_OF_CPU + 1`; done;
+  case `cat /proc/cpuinfo | grep MT76` in
+    *7621*)
+      CONFIG_RALINK_MT7621=y
+      ;;
+    *7623*)
+      CONFIG_ARCH_MT7623=y
+      ;;
+  esac
+
+  killall -q smbd
+  killall -q nmbd
+  
+  smp.sh storage
+
+  if [ "$CONFIG_ARCH_MT7623" == "y" ]; then
+    echo 10 > /proc/sys/net/ipv4/tcp_min_tso_segs
+    echo 0 > /proc/sys/net/ipv4/tcp_timestamps
+    reg s 0xfb100000
+    reg w a0c 81018101
+    reg w 1a0c 81018101
+  fi
+  
+  	rm -rf ${SMB_FILE}
+	/bin/resetboot -l
+	if [ ! -f ${SMB_FILE} ]; then
+		SMB_SW="1"
+	else
+		SMB_SW=`cat ${SMB_FILE}`
+	fi
+	
+	/bin/resetboot -r
+	
+if [ "${SMB_SW}" != "0" ]; then
+	
+	
+  mk_smb_conf_link "smb.conf"
+  mk_smb_conf_link "smbpasswd"
+  
+  if [ ! -f "${smbpwd_slink}" -o "`readlink ${smbpwd_slink}`" != "${smbpwd_dlink}" ]; then
+    echo "make symbolic link ${smbpwd_slink} --> ${smbpwd_dlink}"
+    ln -s ${smbpwd_dlink} ${smbpwd_slink}
+    sync
+  fi
+  
+  /bin/smbconfig
+  
+  if [ "$CONFIG_ARCH_MT7623" == "y" -o "$CONFIG_RALINK_MT7621" == "y" ]; then
+    if [ $NUM_OF_CPU == "4" ]; then
+      taskset 8 /sbin/smbd
+      taskset 8 /sbin/nmbd
+    elif [ $NUM_OF_CPU == "2" ]; then
+      taskset 2 /sbin/smbd
+      taskset 2 /sbin/nmbd
+    else
+      smbd
+      nmbd
+    fi
+  else
+    smbd
+    nmbd
+  fi
+
+  smp.sh storage
+  #Enlarge the system memory reclaim threshold to prevent from OOM kernel
+  echo 3 > /proc/sys/vm/drop_caches
+  free_mem=`cat /proc/meminfo|grep MemFree|sed 's/MemFree://g' |sed 's/ kB//g'`;
+  min_free=`expr $free_mem / 2 `;
+  if [ $free_mem -lt 32768 ]; then
+    echo $min_free > /proc/sys/vm/min_free_kbytes
+  else
+    echo 32768 > /proc/sys/vm/min_free_kbytes
+  fi
+  
+ fi 
+}
+
+smb_header() {
+	local interface
+	config_get interface $1 interface "loopback lan"
+
+	# resolve interfaces
+	local interfaces=$(
+		. /lib/functions/network.sh
+
+		local net
+		for net in $interface; do
+			local device
+			network_get_device device "$net" && {
+				local subnet
+				network_get_subnet  subnet "$net" && echo -n "$subnet "
+				network_get_subnet6 subnet "$net" && echo -n "$subnet "
+			}
+
+			echo -n "${device:-$net} "
+		done
+	)
+
+	local name workgroup description charset
+	local hostname="$(uci_get system.@system[0].hostname)"
+
+	config_get name        $1 name        "${hostname:-OpenWrt}"
+	config_get workgroup   $1 workgroup   "${hostname:-OpenWrt}"
+	config_get description $1 description "Samba on ${hostname:-OpenWrt}"
+	config_get charset     $1 charset     "UTF-8"
+
+	mkdir -p /var/etc
+	sed -e "s#|NAME|#$name#g" \
+	    -e "s#|WORKGROUP|#$workgroup#g" \
+	    -e "s#|DESCRIPTION|#$description#g" \
+	    -e "s#|INTERFACES|#$interfaces#g" \
+	    -e "s#|CHARSET|#$charset#g" \
+	    /etc/samba/smb.conf.template > /var/etc/smb.conf
+
+	local homes
+	config_get_bool homes $1 homes 0
+	[ $homes -gt 0 ] && {
+		cat <<EOT >> /var/etc/smb.conf
+
+[homes]
+	comment     = Home Directories
+	browsable   = no
+	read only   = no
+	create mode = 0750
+EOT
+	}
+
+	[ -L /etc/samba/smb.conf ] || ln -nsf /var/etc/smb.conf /etc/samba/smb.conf
+}
+
+smb_add_share() {
+	local name
+	local path
+	local users
+	local read_only
+	local guest_ok
+	local create_mask
+	local dir_mask
+	local browseable
+
+	config_get name $1 name
+	config_get path $1 path
+	config_get users $1 users
+	config_get read_only $1 read_only
+	config_get guest_ok $1 guest_ok
+	config_get create_mask $1 create_mask
+	config_get dir_mask $1 dir_mask
+	config_get browseable $1 browseable
+
+	[ -z "$name" -o -z "$path" ] && return
+
+	chown nobody $path
+
+	vfat_mount=`mount | grep "$path" |grep vfat`
+	if [ "$vfat_mount" != "" ]; then
+		loose_allocate="loose allocate = yes"
+	fi
+
+	echo -e "\n[$name]\n\tpath = $path" >> /var/etc/smb.conf
+	[ -n "$users" ] && echo -e "\tvalid users = $users" >> /var/etc/smb.conf
+	[ -n "$read_only" ] && echo -e "\tread only = $read_only" >> /var/etc/smb.conf
+	[ -n "$guest_ok" ] && echo -e "\tguest ok = $guest_ok" >> /var/etc/smb.conf
+	[ -n "$create_mask" ] && echo -e "\tcreate mask = $create_mask" >> /var/etc/smb.conf
+	[ -n "$dir_mask" ] && echo -e "\tdirectory mask = $dir_mask" >> /var/etc/smb.conf
+	[ -n "$browseable" ] && echo -e "\tbrowseable = $browseable" >> /var/etc/smb.conf
+	[ -n "$loose_allocate" ] && echo -e "\t$loose_allocate" >> /var/etc/smb.conf
+}
+
+start() {
+	config_load samba
+	config_foreach smb_header samba
+	config_foreach smb_add_share sambashare
+	
+	start_smb
+
+	iptables -t raw -D PREROUTING -p tcp --dport 445  -j NOTRACK
+	iptables -t raw -A PREROUTING -p tcp --dport 445  -j NOTRACK
+	iptables -t raw -D OUTPUT -p tcp --sport 445  -j NOTRACK
+	iptables -t raw -A OUTPUT -p tcp --sport 445  -j NOTRACK
+}
+
+stop() {
+	killall -q smbd
+	killall -q nmbd
+	smp.sh wifi
+
+        iptables -t raw -D PREROUTING -p tcp --dport 445  -j NOTRACK
+        iptables -t raw -D OUTPUT -p tcp --sport 445  -j NOTRACK
+}

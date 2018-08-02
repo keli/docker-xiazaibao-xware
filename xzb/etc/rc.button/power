@@ -1,0 +1,54 @@
+#!/bin/sh
+
+[ "${ACTION}" = "released" ] || exit 0
+
+#exec /sbin/poweroff
+
+. /lib/functions.sh
+
+. /lib/ralink.sh
+
+logger "$BUTTON pressed for $SEEN seconds"
+#if [ "$SEEN" -lt 1 ]; then
+case $(ralink_board_name) in
+	m1-jd)
+		echo "Power Pressed" > /dev/console
+		echo 1 > /sys/class/leds/jd-led-blue-flush/brightness
+		sleep 2
+
+		sync && reboot
+		;;
+	timecloud)
+		# before state
+		
+		xlogger "script: power button pressed, umount the disk"
+
+		#kill__save__data
+		/etc/init.d/appmsh     stop
+		/etc/init.d/xctlsh stop
+		/etc/init.d/mpssh      stop
+		/etc/init.d/etmsh      stop
+	
+		/etc/waittime.sh close &
+
+		/etc/init.d/samba  stop
+
+		sleep 2
+		sync
+
+		/bin/umountall /dev/sd
+		rm -rf /data/UsbDisk1
+
+		# after state
+		# white --> orange light on
+		echo 0 > /sys/class/leds/timecloud-led-orange/brightness
+		[ -f /tmp/quick_umount ] ||  touch /tmp/quick_umount 
+		/etc/init.d/xctlsh start &
+		/etc/init.d/etmsh      start &
+		/etc/init.d/mpssh      start &
+		/etc/init.d/appmsh     start &
+		;;
+	*)
+		exec /sbin/poweroff
+		;;
+esac

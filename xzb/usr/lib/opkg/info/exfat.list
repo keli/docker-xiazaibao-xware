@@ -1,0 +1,3 @@
+/usr/sbin/exfatlabel
+/usr/sbin/exfatfsck
+/usr/sbin/mkexfatfs

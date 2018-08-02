@@ -1,0 +1,9 @@
+Package: dosfslabel
+Version: 3.0.28-1
+Depends: libc, libstdcpp, libiconv-full
+Source: package/utils/dosfstools
+Section: utils
+Architecture: ramips_24kec
+Installed-Size: 103
+Description:  Utilities to create and check MS-DOS FAT filesystems.
+ (dosfslabel for reading and writing labels of FAT volumes)
