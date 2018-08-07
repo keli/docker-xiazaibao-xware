@@ -3,7 +3,7 @@ FROM debian:stable-slim
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update -y && \
-	apt-get install -y net-tools procps proot qemu-user-static && \
+	apt-get install -y vim nano iproute2 net-tools procps proot qemu-user-static && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
 	mkdir -p /data
