@@ -29,12 +29,28 @@ docker pull keli/xiazaibao-xware:latest
 mkdir ~/data
 ```
 
-### 运行
+### 运行示例
 
 ```
 docker run -d \
         --name=xware \
         -p 9000:9000 \
+        -v ~/data:/data \
+        --mac-address 00:1A:2B:3C:4D:5E \
+        --privileged \
+        keli/xiazaibao-xware
+```
+
+也可以通过macvlan建立bridge接入到本地网络再运行，不依赖端口转发了，这样就更像一台本地接入的设备：
+
+```
+docker network create -d macvlan \
+        --subnet=192.168.1.1/24 --gateway=192.168.1.1 \
+        --ip-range=192.168.1.64/27 -o parent=eth0 macvlan
+
+docker run -d \
+        --name=xware \
+        --network macvlan \
         -v ~/data:/data \
         --mac-address 00:1A:2B:3C:4D:5E \
         --privileged \
@@ -63,5 +79,5 @@ active_key: aabbcc
 
 ## 其他事项
 
-#### 从2018年7月底开始据说下载宝的离线加速已经无法使用
+#### 从2018年7月底开始下载宝的离线加速已经无法使用，但还可以正常下载。
 
