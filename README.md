@@ -34,6 +34,7 @@ mkdir ~/data
 ```
 docker run -d \
         --name=xware \
+        -m 256m \
         -p 9000:9000 \
         -v ~/data:/data \
         --mac-address 00:1A:2B:3C:4D:5E \
@@ -50,6 +51,7 @@ docker network create -d macvlan \
 
 docker run -d \
         --name=xware \
+        -m 256m \
         --network macvlan \
         -v ~/data:/data \
         --mac-address 00:1A:2B:3C:4D:5E \
